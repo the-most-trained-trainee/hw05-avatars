@@ -89,18 +89,10 @@ const updateAvatar = async (req, res) => {
 
   try {
     const resultUpload = path.join(avatarsDir, avatarName);
-
-
-    Jimp.read(`./tmp/${originalname}`, (err, img) => {
-      if (err) throw err;
-      console.log('jimp');
-      console.log(img);
-      img.resize(50, 50)
-      // .write("lena-small-bw.jpg");
-    });
-
-
-    // await fs.rename(tempUpload, resultUpload);
+    const image = await Jimp.read(`./tmp/${originalname}`);
+    await image.resize(250, 250);
+    await image.writeAsync(`./tmp/${originalname}`);
+    await fs.rename(tempUpload, resultUpload);
     const avatarURL = path.join('public', 'avatars', avatarName);
     await User.findByIdAndUpdate(req.user._id, { avatarURL })
     res.status(201).json(avatarURL);
@@ -109,18 +101,5 @@ const updateAvatar = async (req, res) => {
     throw error;
   }
 }
-
-
-// const uploadAvatar = async (req, res) => {
-//   const { path: tempUpload, originalname } = req.file;
-//   const resultUpload = path.join(avatarsDir, originalname);
-//   try {
-//     await fs.rename(tempUpload, resultUpload);
-//     res.status(201).json(resultUpload);
-//   } catch (error) {
-//     await fs.unlink(tempUpload);
-//   }
-// }
-
 
 module.exports = { register: ctrlWrapper(register), login: ctrlWrapper(login), current: ctrlWrapper(current), logout: ctrlWrapper(logout), updateAvatar: ctrlWrapper(updateAvatar) };

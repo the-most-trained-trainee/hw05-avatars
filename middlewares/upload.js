@@ -3,8 +3,7 @@ const path = require('path');
 
 
 const tempDir = path.join(__dirname, '../', 'tmp');
-// const avatarsDir = path.join(__dirname, 'public', 'avatars');
-// console.log(avatarsDir);
+
 
 const multerConfig = multer.diskStorage({
   destination: (req, file, cb) => {
