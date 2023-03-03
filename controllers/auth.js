@@ -1,8 +1,13 @@
+const path = require('path');
+const fs = require('fs/promises');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const gravatar = require('gravatar');
 const { ctrlWrapper } = require('../helpers');
 const { User } = require('../models/user');
 const { Conflict, Unauthorized } = require('http-errors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const Jimp = require("jimp");
+
 
 const register = async (req, res) => {
   const { email, password, subscription = "starter" } = req.body;
@@ -10,16 +15,18 @@ const register = async (req, res) => {
   if (user) {
     throw new Conflict('Email in use');
   }
+  const avatar = gravatar.url(email, { protocol: 'https', s: '100' });
+
   const hashPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
   const result = await User.create({
-    email, subscription, password: hashPassword
+    email, subscription, password: hashPassword, avatarURL: avatar
   });
   res.status(201).json({
     status: 'success',
     code: 201,
     data: {
       user: {
-        email, subscription
+        email, subscription, avatar
       }
     }
   });
@@ -74,4 +81,25 @@ const logout = async (req, res) => {
   res.status(204).json();
 }
 
-module.exports = { register: ctrlWrapper(register), login: ctrlWrapper(login), current: ctrlWrapper(current), logout: ctrlWrapper(logout) };
+const updateAvatar = async (req, res) => {
+  const avatarsDir = path.join(__dirname, '../', 'public', 'avatars');
+  const { path: tempUpload, originalname } = req.file;
+  const { _id: id } = req.user;
+  const avatarName = `${id}_${originalname}`;
+
+  try {
+    const resultUpload = path.join(avatarsDir, avatarName);
+    const image = await Jimp.read(`./tmp/${originalname}`);
+    await image.resize(250, 250);
+    await image.writeAsync(`./tmp/${originalname}`);
+    await fs.rename(tempUpload, resultUpload);
+    const avatarURL = path.join('public', 'avatars', avatarName);
+    await User.findByIdAndUpdate(req.user._id, { avatarURL })
+    res.status(201).json(avatarURL);
+  } catch (error) {
+    await fs.unlink(tempUpload);
+    throw error;
+  }
+}
+
+module.exports = { register: ctrlWrapper(register), login: ctrlWrapper(login), current: ctrlWrapper(current), logout: ctrlWrapper(logout), updateAvatar: ctrlWrapper(updateAvatar) };
